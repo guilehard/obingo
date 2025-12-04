@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bingo Online da Família</title>
+    <title>Bingo Multi-Salas</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎱</text></svg>">
 
@@ -14,10 +14,15 @@
         body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #fafafa; margin: 0; padding: 20px; user-select: none; }
         h1 { color: #d32f2f; margin-bottom: 5px; }
         
-        #status-conexao { font-size: 12px; color: #aaa; margin-bottom: 20px; font-weight: bold; }
-        .online { color: green !important; }
-        .offline { color: red !important; }
+        /* Status e Sala */
+        .info-bar { font-size: 14px; color: #666; margin-bottom: 20px; background: #eee; padding: 5px; border-radius: 5px; display: inline-block;}
+        .online { color: green !important; font-weight: bold; }
+        .nome-sala { font-weight: bold; color: #007bff; text-transform: uppercase; }
 
+        /* Login (Entrada da Sala) */
+        #tela-login { max-width: 300px; margin: 50px auto; }
+        input.input-sala { padding: 10px; font-size: 16px; border: 2px solid #ddd; border-radius: 5px; width: 100%; box-sizing: border-box; text-transform: uppercase; text-align: center; margin-bottom: 10px; }
+        
         /* Menu */
         .menu { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; }
         .menu button { padding: 12px 20px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; flex: 1; max-width: 150px; transition: 0.2s; }
@@ -40,7 +45,6 @@
         @keyframes tremer { 0% { transform: rotate(0deg); } 25% { transform: rotate(5deg); } 75% { transform: rotate(-5deg); } 100% { transform: rotate(0deg); } }
 
         .btn-acao { background: #28a745; color: white; padding: 15px 30px; font-size: 20px; border: none; border-radius: 50px; cursor: pointer; width: 80%; max-width: 300px; box-shadow: 0 4px 0 #1e7e34; }
-        .btn-acao:active { transform: translateY(4px); box-shadow: none; }
         .btn-acao:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
 
         /* CARTELA */
@@ -53,7 +57,6 @@
         td.marcado-manual { border: 3px solid #28a745; }
         td.free { background: #ddd; font-size: 12px; }
 
-        .aviso { color: red; font-weight: bold; min-height: 20px; margin-top: 10px;}
         .grid-historico { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; max-width: 400px; margin: 20px auto; }
         .bolinha-hist { font-size: 12px; padding: 5px; background: #eee; border-radius: 4px; color: #ccc; }
         .bolinha-hist.saiu { background: #333; color: #fff; font-weight: bold; transform: scale(1.1); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
@@ -62,42 +65,52 @@
 <body>
 
     <h1>🎱 Bingo da Família</h1>
-    <div id="status-conexao" class="offline">Conectando ao servidor...</div>
-
-    <div class="menu">
-        <button onclick="mudarTela('jogador')" id="btn-jogador" class="btn-ativo">Minha Cartela</button>
-        <button onclick="verificarAcessoAdm()" id="btn-mesa" class="btn-inativo">🔒 Mesa (ADM)</button>
+    
+    <div id="barra-status" class="info-bar" style="display:none;">
+        Sala: <span id="display-sala" class="nome-sala">--</span> | 
+        <span id="status-conexao">Conectando...</span> |
+        <a href="#" onclick="sairDaSala()" style="color:red; font-size:12px;">Sair</a>
     </div>
 
-    <div id="tela-jogador" class="tela ativa">
-        <div class="cartela-container">
-            <table>
-                <thead><tr><th>B</th><th>I</th><th>N</th><th>G</th><th>O</th></tr></thead>
-                <tbody id="corpo-cartela"></tbody>
-            </table>
-        </div>
-        <br>
-        <button onclick="forcarNovaCartela()" style="background:#555; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer;">Gerar Nova Cartela</button>
-        <p style="font-size:12px; color:#666;">
-            A cartela fica salva mesmo se atualizar a página.<br>
-            🟡 Amarelo: Automático | 🟢 Verde: Manual
-        </p>
+    <div id="tela-login" class="tela ativa">
+        <h3>Escolha uma Sala</h3>
+        <p style="font-size:14px; color:#666;">Digite um nome para o grupo (Ex: NATAL, FAMILIA, BAR)</p>
+        <input type="text" id="input-sala" class="input-sala" placeholder="Nome da Sala">
+        <button class="btn-acao" onclick="entrarNaSala()">ENTRAR</button>
     </div>
 
-    <div id="tela-mesa" class="tela">
-        <div class="globo" id="globo-numero">--</div>
-        <div class="aviso" id="aviso-mesa"></div>
-        <button class="btn-acao" id="btn-sortear" onclick="iniciarSorteioAnimado()">Sortear Número</button>
-        <div style="margin-top: 30px;">
-            <button onclick="reiniciarPartidaGlobal()" style="background:#d32f2f; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer;">Reiniciar Partida (ZERA TUDO)</button>
+    <div id="area-jogo" style="display:none;">
+        
+        <div class="menu">
+            <button onclick="mudarTela('jogador')" id="btn-jogador" class="btn-ativo">Minha Cartela</button>
+            <button onclick="verificarAcessoAdm()" id="btn-mesa" class="btn-inativo">🔒 Mesa (ADM)</button>
         </div>
-        <h3 style="margin-top:20px; border-top:1px solid #ddd; padding-top:10px;">Histórico</h3>
-        <div class="grid-historico" id="grid-historico"></div>
+
+        <div id="tela-jogador" class="tela ativa">
+            <div class="cartela-container">
+                <table>
+                    <thead><tr><th>B</th><th>I</th><th>N</th><th>G</th><th>O</th></tr></thead>
+                    <tbody id="corpo-cartela"></tbody>
+                </table>
+            </div>
+            <br>
+            <button onclick="forcarNovaCartela()" style="background:#555; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer;">Gerar Nova Cartela</button>
+        </div>
+
+        <div id="tela-mesa" class="tela">
+            <div class="globo" id="globo-numero">--</div>
+            <button class="btn-acao" id="btn-sortear" onclick="iniciarSorteioAnimado()">Sortear Número</button>
+            <div style="margin-top: 30px;">
+                <button onclick="reiniciarPartidaGlobal()" style="background:#d32f2f; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer;">Reiniciar Jogo (Sala Atual)</button>
+            </div>
+            <h3 style="margin-top:20px; border-top:1px solid #ddd; padding-top:10px;">Histórico</h3>
+            <div class="grid-historico" id="grid-historico"></div>
+        </div>
     </div>
 
 <script>
     // ======================================================
-    // ⚠️ COPIE AQUI OS DADOS QUE FUNCIONARAM ⚠️
+    // ⚠️ COPIE AQUI SEUS DADOS DO FIREBASE ⚠️
     // ======================================================
     const firebaseConfig = {
         apiKey: "SUA_API_KEY_AQUI", 
@@ -119,21 +132,61 @@
 
     const SENHA_ADM = "1234";
     let numerosSorteados = [];
+    let SALA_ATUAL = null;
 
-    // --- CONEXÃO ---
-    if(db) {
+    // --- LÓGICA DE SALAS ---
+    function entrarNaSala() {
+        let input = document.getElementById('input-sala').value.trim();
+        if (!input) { alert("Digite o nome da sala!"); return; }
+        
+        // Limpa o nome da sala (remove caracteres especiais e deixa maiúsculo)
+        SALA_ATUAL = input.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+        
+        if(SALA_ATUAL.length < 3) { alert("Nome muito curto!"); return; }
+
+        localStorage.setItem('bingo_sala_id', SALA_ATUAL);
+        iniciarSistema();
+    }
+
+    function sairDaSala() {
+        if(confirm("Sair da sala?")) {
+            localStorage.removeItem('bingo_sala_id');
+            location.reload();
+        }
+    }
+
+    // Verifica se já tem sala salva ao abrir
+    window.onload = function() {
+        const salaSalva = localStorage.getItem('bingo_sala_id');
+        if (salaSalva) {
+            document.getElementById('input-sala').value = salaSalva;
+            entrarNaSala();
+        }
+    };
+
+    function iniciarSistema() {
+        // Esconde login, mostra jogo
+        document.getElementById('tela-login').classList.remove('ativa');
+        document.getElementById('area-jogo').style.display = 'block';
+        document.getElementById('barra-status').style.display = 'inline-block';
+        document.getElementById('display-sala').innerText = SALA_ATUAL;
+
+        // --- CONECTA NO FIREBASE (DENTRO DA SALA ESPECÍFICA) ---
+        // O truque é adicionar a SALA no caminho do banco: 'bingo/SALA/estado'
+        
         db.ref(".info/connected").on("value", function(snap) {
             const statusDiv = document.getElementById('status-conexao');
             if (snap.val() === true) {
-                statusDiv.innerText = "🟢 Conectado e Sincronizado";
-                statusDiv.className = "online";
+                statusDiv.innerText = "Online";
+                statusDiv.classList.add('online');
             } else {
-                statusDiv.innerText = "🔴 Desconectado (Tentando reconectar...)";
-                statusDiv.className = "offline";
+                statusDiv.innerText = "Offline";
+                statusDiv.classList.remove('online');
             }
         });
 
-        db.ref('bingo/estado').on('value', (snapshot) => {
+        // Escuta APENAS a sala atual
+        db.ref('bingo/' + SALA_ATUAL + '/estado').on('value', (snapshot) => {
             const dados = snapshot.val();
             if (dados) {
                 numerosSorteados = dados.sorteados || [];
@@ -149,6 +202,9 @@
                 verificarCartelaDoJogador([]);
             }
         });
+
+        // Inicia/Carrega Cartela
+        carregarOuGerarCartela();
     }
 
     // --- MESA ---
@@ -178,30 +234,25 @@
         let indice = Math.floor(Math.random() * disponiveis.length);
         let numero = disponiveis[indice];
         let novaLista = [...numerosSorteados, numero];
-        db.ref('bingo/estado').set({ sorteados: novaLista, data: new Date().toString() });
+        
+        // Salva na SALA ATUAL
+        db.ref('bingo/' + SALA_ATUAL + '/estado').set({ sorteados: novaLista, data: new Date().toString() });
     }
 
     function reiniciarPartidaGlobal() {
-        if(prompt("Digite ZERA para apagar o jogo de TODOS:") === "ZERA") {
-            db.ref('bingo/estado').set(null);
+        if(prompt("Digite ZERA para reiniciar a sala " + SALA_ATUAL + ":") === "ZERA") {
+            db.ref('bingo/' + SALA_ATUAL + '/estado').set(null);
         }
     }
 
-    // --- JOGADOR (CARTELA PERSISTENTE) ---
-    
-    // Função para desenhar a tabela baseada em números salvos
+    // --- JOGADOR ---
     function desenharTabela(cols) {
         const corpo = document.getElementById('corpo-cartela');
         corpo.innerHTML = '';
-        
         for (let i = 0; i < 5; i++) {
             let tr = document.createElement('tr');
-            
-            // Lógica para o FREE no meio da coluna N
             let nVal = (i === 2) ? 'FREE' : (i > 2 ? cols.n[i-1] : cols.n[i]);
-            
             let valores = [cols.b[i], cols.i[i], nVal, cols.g[i], cols.o[i]];
-            
             valores.forEach(val => {
                 let td = document.createElement('td');
                 td.innerText = val;
@@ -214,41 +265,29 @@
         verificarCartelaDoJogador(numerosSorteados);
     }
 
-    // Função Principal de Carga
     function carregarOuGerarCartela() {
-        // Tenta pegar do armazenamento local
-        const cartelaSalva = localStorage.getItem('minha_cartela_v4');
-        
+        const cartelaSalva = localStorage.getItem('minha_cartela_v5');
         if (cartelaSalva) {
-            // Se existir, usa ela
-            const cols = JSON.parse(cartelaSalva);
-            desenharTabela(cols);
+            desenharTabela(JSON.parse(cartelaSalva));
         } else {
-            // Se não existir, cria uma nova
             gerarEGuardarCartela();
         }
     }
 
-    // Gera números, salva e desenha
     function gerarEGuardarCartela() {
         let cols = {
             b: numsAleatorios(1, 15, 5),
             i: numsAleatorios(16, 30, 5),
-            n: numsAleatorios(31, 45, 4), // Apenas 4 pois tem o FREE
+            n: numsAleatorios(31, 45, 4),
             g: numsAleatorios(46, 60, 5),
             o: numsAleatorios(61, 75, 5)
         };
-        
-        // Salva no navegador do usuário
-        localStorage.setItem('minha_cartela_v4', JSON.stringify(cols));
+        localStorage.setItem('minha_cartela_v5', JSON.stringify(cols));
         desenharTabela(cols);
     }
 
-    // Botão "Gerar Nova Cartela" (Força a troca)
     function forcarNovaCartela() {
-        if(confirm("Tem certeza? Isso apagará sua cartela atual e gerará uma nova.")) {
-            gerarEGuardarCartela();
-        }
+        if(confirm("Gerar nova cartela?")) gerarEGuardarCartela();
     }
 
     function verificarCartelaDoJogador(listaSorteados) {
@@ -294,10 +333,6 @@
         if(senha === SENHA_ADM) mudarTela('mesa');
         else if(senha !== null) alert("Senha errada.");
     }
-
-    // INICIA O SISTEMA
-    // Em vez de gerar direto, ele verifica se já tem salva
-    carregarOuGerarCartela();
 
 </script>
 </body>
