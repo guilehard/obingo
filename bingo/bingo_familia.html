@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bingo Diagnóstico</title>
+    <title>Bingo Online da Família</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎱</text></svg>">
 
@@ -11,125 +11,30 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <style>
-        body { font-family: monospace; text-align: center; background: #222; color: #fff; padding: 20px; }
-        .log-box { 
-            background: #000; border: 1px solid #444; padding: 15px; 
-            text-align: left; height: 300px; overflow-y: scroll; margin-bottom: 20px;
-            font-size: 14px;
-        }
-        .sucesso { color: #0f0; }
-        .erro { color: #f55; font-weight: bold; }
-        .aviso { color: #ff0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #fafafa; margin: 0; padding: 20px; user-select: none; }
+        h1 { color: #d32f2f; margin-bottom: 5px; }
         
-        button { padding: 15px; cursor: pointer; font-size: 16px; margin: 5px; }
-    </style>
-</head>
-<body>
+        /* Status de Conexão */
+        #status-conexao { font-size: 12px; color: #aaa; margin-bottom: 20px; font-weight: bold; }
+        .online { color: green !important; }
+        .offline { color: red !important; }
 
-    <h1>🕵️ Modo Diagnóstico</h1>
-    <p>Veja abaixo o que está acontecendo:</p>
-
-    <div class="log-box" id="console-tela">Aguardando início...<br></div>
-
-    <div id="status-final" style="font-size: 20px; margin: 20px;">🟠 TESTANDO...</div>
-
-    <div id="controles" style="display:none; border-top: 1px solid #555; padding-top: 20px;">
-        <h2>🎉 SUCESSO! O BINGO FUNCIONOU!</h2>
-        <p>Se você vê isso, a conexão está perfeita.</p>
-        <button onclick="realizarSorteioTeste()">Testar Sorteio (Enviar pro Banco)</button>
-        <div id="ultimo-sorteado" style="font-size: 50px; color: yellow; margin-top: 10px;">--</div>
-    </div>
-
-<script>
-    // Função para escrever na tela preta
-    function log(msg, tipo="normal") {
-        const box = document.getElementById('console-tela');
-        const linha = document.createElement('div');
-        linha.innerHTML = `> ${msg}`;
-        if(tipo === 'erro') linha.className = 'erro';
-        if(tipo === 'sucesso') linha.className = 'sucesso';
-        box.appendChild(linha);
-        console.log(msg);
-    }
-
-    log("Iniciando script...");
-
-    // ======================================================
-    // ⚠️ PREENCHA SEUS DADOS AQUI COM CUIDADO ⚠️
-    // ======================================================
-    const firebaseConfig = {
-        apiKey: "SUA_API_KEY_AQUI", 
-        authDomain: "bingofamilia-7a112.firebaseapp.com",
-        databaseURL: "https://bingofamilia-7a112-default-rtdb.firebaseio.com", 
-        projectId: "bingofamilia-7a112",
-        storageBucket: "bingofamilia-7a112.appspot.com",
-        messagingSenderId: "123456...",
-        appId: "1:123456..."
-    };
-    // ======================================================
-
-    let db;
-
-    try {
-        // 1. Verificar Bibliotecas
-        if (typeof firebase === 'undefined') {
-            throw new Error("Bibliotecas do Firebase NÃO foram carregadas. Verifique sua internet ou bloqueadores de anúncio.");
-        }
-        log("Bibliotecas carregadas OK.", "sucesso");
-
-        // 2. Inicializar App
-        if (!firebase.apps.length) { 
-            firebase.initializeApp(firebaseConfig); 
-            log("Firebase inicializado.", "sucesso");
-        }
+        /* Menu */
+        .menu { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; }
+        .menu button { padding: 12px 20px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; flex: 1; max-width: 150px; transition: 0.2s; }
+        .btn-ativo { background: #d32f2f; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transform: scale(1.05); }
+        .btn-inativo { background: #e0e0e0; color: #333; }
         
-        // 3. Instanciar Banco
-        db = firebase.database();
-        log("Banco de dados instanciado.", "sucesso");
+        .tela { display: none; animation: fadeIn 0.5s; }
+        .tela.ativa { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        // 4. Teste de Conexão Mágica (.info/connected)
-        log("Tentando conectar ao servidor...", "aviso");
-        
-        db.ref(".info/connected").on("value", function(snap) {
-            if (snap.val() === true) {
-                log("🟢 CONECTADO AO GOOGLE FIREBASE!", "sucesso");
-                document.getElementById('status-final').innerHTML = "🟢 CONECTADO!";
-                document.getElementById('status-final').style.color = "#0f0";
-                document.getElementById('controles').style.display = "block";
-            } else {
-                log("🔴 Desconectado. Tentando reconectar...", "aviso");
-                document.getElementById('status-final').innerHTML = "🔴 DESCONECTADO";
-            }
-        });
-
-        // 5. Escutar dados do Bingo
-        db.ref('bingo/estado').on('value', (snapshot) => {
-            log("Recebi dados do banco!", "sucesso");
-            const dados = snapshot.val();
-            if(dados && dados.sorteados) {
-                const ultimo = dados.sorteados[dados.sorteados.length - 1];
-                document.getElementById('ultimo-sorteado').innerText = ultimo;
-                log(`Último número recebido: ${ultimo}`);
-            }
-        }, (error) => {
-            log(`ERRO DE PERMISSÃO: ${error.message}`, "erro");
-            log("Verifique se as REGRAS do banco estão como true.", "erro");
-        });
-
-    } catch (e) {
-        log(`ERRO FATAL: ${e.message}`, "erro");
-    }
-
-    function realizarSorteioTeste() {
-        if(!db) return;
-        const num = Math.floor(Math.random() * 75) + 1;
-        log(`Enviando número ${num} para o banco...`);
-        db.ref('bingo/estado').set({
-            sorteados: [num],
-            data: new Date().toString()
-        }).catch(e => log(`Erro ao salvar: ${e.message}`, "erro"));
-    }
-
-</script>
-</body>
-</html>
+        /* GLOBO */
+        .globo {
+            font-size: 80px; font-weight: bold; color: white;
+            background: #d32f2f; width: 150px; height: 150px;
+            line-height: 150px; border-radius: 50%; margin: 20px auto;
+            border: 5px solid white; box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transition: 0.3s;
+        }
+        .globo.agitando { animation: tremer 0.5s infinite; background: #ff9800; }
