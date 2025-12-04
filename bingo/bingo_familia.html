@@ -11,10 +11,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #fafafa; margin: 0; padding: 20px; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #fafafa; margin: 0; padding: 20px; user-select: none; }
         h1 { color: #d32f2f; margin-bottom: 5px; }
         
-        /* Status de Conexão */
         #status-conexao { font-size: 12px; color: #aaa; margin-bottom: 20px; font-weight: bold; }
         .online { color: green !important; }
         .offline { color: red !important; }
@@ -50,9 +49,8 @@
         th { background: #d32f2f; color: white; padding: 10px; font-size: 20px; border-radius: 5px 5px 0 0; }
         td { border: 1px solid #ddd; height: 50px; width: 20%; font-size: 22px; cursor: pointer; transition: background 0.3s; position: relative; }
         
-        /* CORES DE MARCAÇÃO */
-        td.marcado-auto { background-color: #ffeb3b; color: #d32f2f; font-weight: bold; } /* Automático (Sorteado) */
-        td.marcado-manual { border: 3px solid #28a745; } /* Manual (Clique do usuário) */
+        td.marcado-auto { background-color: #ffeb3b; color: #d32f2f; font-weight: bold; }
+        td.marcado-manual { border: 3px solid #28a745; }
         td.free { background: #ddd; font-size: 12px; }
 
         .aviso { color: red; font-weight: bold; min-height: 20px; margin-top: 10px;}
@@ -79,10 +77,10 @@
             </table>
         </div>
         <br>
-        <button onclick="gerarNovaCartela()" style="background:#555; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer;">Gerar Nova Cartela</button>
+        <button onclick="forcarNovaCartela()" style="background:#555; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer;">Gerar Nova Cartela</button>
         <p style="font-size:12px; color:#666;">
-            🟡 Amarelo: Sorteado pela mesa (Automático)<br>
-            🟢 Borda Verde: Sua marcação (Clique)
+            A cartela fica salva mesmo se atualizar a página.<br>
+            🟡 Amarelo: Automático | 🟢 Verde: Manual
         </p>
     </div>
 
@@ -90,26 +88,21 @@
         <div class="globo" id="globo-numero">--</div>
         <div class="aviso" id="aviso-mesa"></div>
         <button class="btn-acao" id="btn-sortear" onclick="iniciarSorteioAnimado()">Sortear Número</button>
-        
         <div style="margin-top: 30px;">
             <button onclick="reiniciarPartidaGlobal()" style="background:#d32f2f; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer;">Reiniciar Partida (ZERA TUDO)</button>
         </div>
-        
         <h3 style="margin-top:20px; border-top:1px solid #ddd; padding-top:10px;">Histórico</h3>
         <div class="grid-historico" id="grid-historico"></div>
     </div>
 
 <script>
     // ======================================================
-    // ⚠️ COPIE AQUI OS DADOS QUE FUNCIONARAM NO TESTE ⚠️
+    // ⚠️ COPIE AQUI OS DADOS QUE FUNCIONARAM ⚠️
     // ======================================================
     const firebaseConfig = {
         apiKey: "SUA_API_KEY_AQUI", 
         authDomain: "bingofamilia-7a112.firebaseapp.com",
-        
-        // 🚨 Certifique-se que esta URL está correta (sem :null)
         databaseURL: "https://bingofamilia-7a112-default-rtdb.firebaseio.com",
-        
         projectId: "bingofamilia-7a112",
         storageBucket: "bingofamilia-7a112.appspot.com",
         messagingSenderId: "123456...",
@@ -117,9 +110,8 @@
     };
     // ======================================================
 
-    // Inicialização do Firebase
     if (typeof firebase === 'undefined') {
-        alert("Erro: O Firebase não carregou. Verifique sua internet.");
+        alert("Erro: O Firebase não carregou.");
     } else {
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         var db = firebase.database();
@@ -128,9 +120,8 @@
     const SENHA_ADM = "1234";
     let numerosSorteados = [];
 
-    // --- SINCRONIZAÇÃO EM TEMPO REAL ---
+    // --- CONEXÃO ---
     if(db) {
-        // Verifica conexão (.info/connected)
         db.ref(".info/connected").on("value", function(snap) {
             const statusDiv = document.getElementById('status-conexao');
             if (snap.val() === true) {
@@ -142,21 +133,16 @@
             }
         });
 
-        // Escuta os sorteios
         db.ref('bingo/estado').on('value', (snapshot) => {
             const dados = snapshot.val();
             if (dados) {
                 numerosSorteados = dados.sorteados || [];
                 const ultimo = numerosSorteados.length > 0 ? numerosSorteados[numerosSorteados.length - 1] : '--';
                 
-                // Atualiza Mesa
                 document.getElementById('globo-numero').innerText = ultimo;
                 atualizarHistoricoVisual(numerosSorteados);
-                
-                // Atualiza Cartelas (Auto-Mark)
                 verificarCartelaDoJogador(numerosSorteados);
             } else {
-                // Jogo Resetado
                 numerosSorteados = [];
                 document.getElementById('globo-numero').innerText = '--';
                 atualizarHistoricoVisual([]);
@@ -165,21 +151,17 @@
         });
     }
 
-    // --- LÓGICA DA MESA (ADM) ---
+    // --- MESA ---
     function iniciarSorteioAnimado() {
         if (numerosSorteados.length >= 75) { alert("Bingo encerrado!"); return; }
-
         const btn = document.getElementById('btn-sortear');
         const globo = document.getElementById('globo-numero');
         
         btn.disabled = true;
         btn.innerText = "Girando...";
         globo.classList.add('agitando');
-
-        // Efeito visual de números passando
+        
         let interval = setInterval(() => { globo.innerText = Math.floor(Math.random() * 75) + 1; }, 80);
-
-        // Após 3 segundos, envia pro Google
         setTimeout(() => {
             clearInterval(interval);
             globo.classList.remove('agitando');
@@ -190,16 +172,11 @@
     }
 
     function realizarSorteioNoBanco() {
-        // Filtra números que ainda não saíram
         let disponiveis = [];
         for(let i=1; i<=75; i++) { if(!numerosSorteados.includes(i)) disponiveis.push(i); }
-        
         if(disponiveis.length === 0) return;
-
         let indice = Math.floor(Math.random() * disponiveis.length);
         let numero = disponiveis[indice];
-        
-        // Salva no banco (Isso dispara a atualização em todos os celulares)
         let novaLista = [...numerosSorteados, numero];
         db.ref('bingo/estado').set({ sorteados: novaLista, data: new Date().toString() });
     }
@@ -210,53 +187,79 @@
         }
     }
 
-    // --- LÓGICA DO JOGADOR ---
-    function verificarCartelaDoJogador(listaSorteados) {
-        document.querySelectorAll('#corpo-cartela td').forEach(td => {
-            let valor = td.innerText;
-            if (valor === "FREE") return;
-            
-            // Marca de amarelo se foi sorteado
-            if (listaSorteados.includes(parseInt(valor))) { 
-                td.classList.add('marcado-auto'); 
-            } else { 
-                td.classList.remove('marcado-auto'); 
-            }
-        });
-    }
-
-    function gerarNovaCartela() {
-        if(document.getElementById('corpo-cartela').innerHTML !== "") {
-            if(!confirm("Gerar nova cartela?")) return;
-        }
+    // --- JOGADOR (CARTELA PERSISTENTE) ---
+    
+    // Função para desenhar a tabela baseada em números salvos
+    function desenharTabela(cols) {
         const corpo = document.getElementById('corpo-cartela');
         corpo.innerHTML = '';
         
-        let colB = numsAleatorios(1, 15, 5);
-        let colI = numsAleatorios(16, 30, 5);
-        let colN = numsAleatorios(31, 45, 4);
-        let colG = numsAleatorios(46, 60, 5);
-        let colO = numsAleatorios(61, 75, 5);
-
         for (let i = 0; i < 5; i++) {
             let tr = document.createElement('tr');
-            let nVal = (i === 2) ? 'FREE' : (i > 2 ? colN[i-1] : colN[i]);
-            let valores = [colB[i], colI[i], nVal, colG[i], colO[i]];
+            
+            // Lógica para o FREE no meio da coluna N
+            let nVal = (i === 2) ? 'FREE' : (i > 2 ? cols.n[i-1] : cols.n[i]);
+            
+            let valores = [cols.b[i], cols.i[i], nVal, cols.g[i], cols.o[i]];
+            
             valores.forEach(val => {
                 let td = document.createElement('td');
                 td.innerText = val;
                 if(val === 'FREE') td.classList.add('free');
-                // Clique manual (borda verde)
                 td.onclick = () => { if(val !== 'FREE') td.classList.toggle('marcado-manual'); }
                 tr.appendChild(td);
             });
             corpo.appendChild(tr);
         }
-        // Verifica se algum número da cartela nova já saiu
         verificarCartelaDoJogador(numerosSorteados);
     }
 
-    // --- UTILITÁRIOS ---
+    // Função Principal de Carga
+    function carregarOuGerarCartela() {
+        // Tenta pegar do armazenamento local
+        const cartelaSalva = localStorage.getItem('minha_cartela_v4');
+        
+        if (cartelaSalva) {
+            // Se existir, usa ela
+            const cols = JSON.parse(cartelaSalva);
+            desenharTabela(cols);
+        } else {
+            // Se não existir, cria uma nova
+            gerarEGuardarCartela();
+        }
+    }
+
+    // Gera números, salva e desenha
+    function gerarEGuardarCartela() {
+        let cols = {
+            b: numsAleatorios(1, 15, 5),
+            i: numsAleatorios(16, 30, 5),
+            n: numsAleatorios(31, 45, 4), // Apenas 4 pois tem o FREE
+            g: numsAleatorios(46, 60, 5),
+            o: numsAleatorios(61, 75, 5)
+        };
+        
+        // Salva no navegador do usuário
+        localStorage.setItem('minha_cartela_v4', JSON.stringify(cols));
+        desenharTabela(cols);
+    }
+
+    // Botão "Gerar Nova Cartela" (Força a troca)
+    function forcarNovaCartela() {
+        if(confirm("Tem certeza? Isso apagará sua cartela atual e gerará uma nova.")) {
+            gerarEGuardarCartela();
+        }
+    }
+
+    function verificarCartelaDoJogador(listaSorteados) {
+        document.querySelectorAll('#corpo-cartela td').forEach(td => {
+            let valor = td.innerText;
+            if (valor === "FREE") return;
+            if (listaSorteados.includes(parseInt(valor))) { td.classList.add('marcado-auto'); } 
+            else { td.classList.remove('marcado-auto'); }
+        });
+    }
+
     function numsAleatorios(min, max, qtd) {
         let arr = [];
         while(arr.length < qtd){
@@ -266,6 +269,7 @@
         return arr;
     }
 
+    // --- UTILITÁRIOS ---
     function atualizarHistoricoVisual(lista) {
         const grid = document.getElementById('grid-historico');
         grid.innerHTML = '';
@@ -291,8 +295,9 @@
         else if(senha !== null) alert("Senha errada.");
     }
 
-    // Inicia gerando a primeira cartela
-    gerarNovaCartela();
+    // INICIA O SISTEMA
+    // Em vez de gerar direto, ele verifica se já tem salva
+    carregarOuGerarCartela();
 
 </script>
 </body>
