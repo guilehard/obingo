@@ -3,87 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bingo da Família</title>
+    <title>Bingo Online da Família</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #fafafa; margin: 0; padding: 20px; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #fafafa; margin: 0; padding: 20px; user-select: none; }
         h1 { color: #d32f2f; margin-bottom: 10px; }
         
-        /* Menu de Navegação */
+        /* Status de Conexão */
+        #status-conexao { font-size: 12px; color: #aaa; margin-bottom: 15px; }
+        .online { color: green !important; font-weight: bold; }
+
+        /* Menu */
         .menu { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; }
-        .menu button {
-            padding: 12px 20px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; flex: 1; max-width: 150px; transition: 0.2s;
-        }
-        .btn-ativo { background: #d32f2f; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transform: scale(1.05); }
+        .menu button { padding: 12px 20px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; flex: 1; max-width: 150px; }
+        .btn-ativo { background: #d32f2f; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         .btn-inativo { background: #e0e0e0; color: #333; }
         
-        /* Telas */
-        .tela { display: none; animation: fadeIn 0.4s; }
-        .tela.ativa { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .tela { display: none; }
+        .tela.ativa { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* --- ANIMAÇÃO DO GLOBO (NOVO) --- */
-        @keyframes tremer {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-5deg); }
-            20% { transform: translate(-3px, 0px) rotate(5deg); }
-            30% { transform: translate(3px, 2px) rotate(0deg); }
-            40% { transform: translate(1px, -1px) rotate(5deg); }
-            50% { transform: translate(-1px, 2px) rotate(-5deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            70% { transform: translate(3px, 1px) rotate(-5deg); }
-            80% { transform: translate(-1px, -1px) rotate(5deg); }
-            90% { transform: translate(1px, 2px) rotate(0deg); }
-            100% { transform: translate(1px, -2px) rotate(-1deg); }
-        }
-
+        /* GLOBO E ANIMAÇÃO */
         .globo {
             font-size: 80px; font-weight: bold; color: white;
             background: #d32f2f; width: 150px; height: 150px;
             line-height: 150px; border-radius: 50%; margin: 20px auto;
-            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.3), 0 10px 20px rgba(0,0,0,0.2);
-            transition: background 0.3s;
-            border: 5px solid white;
+            border: 5px solid white; box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transition: 0.3s;
+        }
+        .globo.agitando { animation: tremer 0.5s infinite; background: #ff9800; }
+        @keyframes tremer {
+            0% { transform: rotate(0deg); } 25% { transform: rotate(5deg); } 
+            75% { transform: rotate(-5deg); } 100% { transform: rotate(0deg); }
         }
 
-        /* Classe que ativa a animação */
-        .globo.agitando {
-            animation: tremer 0.5s infinite; /* Treme infinitamente enquanto tiver a classe */
-            background: #ff9800; /* Muda para laranja enquanto gira */
-            color: #fff;
-        }
-        
-        .btn-acao { 
-            background: #28a745; color: white; padding: 15px 30px; 
-            font-size: 20px; border: none; border-radius: 50px; cursor: pointer; width: 80%; max-width: 300px;
-            box-shadow: 0 4px 0 #218838; transition: transform 0.1s;
-        }
-        .btn-acao:active { transform: translateY(4px); box-shadow: none; }
-        .btn-acao:disabled { background: #ccc; box-shadow: none; cursor: not-allowed; }
+        .btn-acao { background: #28a745; color: white; padding: 15px 30px; font-size: 20px; border: none; border-radius: 50px; cursor: pointer; width: 80%; max-width: 300px; }
+        .btn-acao:disabled { background: #ccc; cursor: not-allowed; }
 
-        /* Cartela */
+        /* CARTELA */
         .cartela-container { max-width: 350px; margin: 0 auto; background: white; padding: 10px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         table { width: 100%; border-collapse: collapse; }
-        th { background: #d32f2f; color: white; padding: 10px; font-size: 20px; border-radius: 5px 5px 0 0; }
-        td { border: 1px solid #ddd; height: 50px; width: 20%; font-size: 22px; cursor: pointer; }
-        td.marcado { background-color: #ffeb3b; color: #d32f2f; font-weight: bold; position: relative; }
-        /* X vermelho na marcação */
-        td.marcado::after { content: '✕'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.3; font-size: 30px; }
+        th { background: #d32f2f; color: white; padding: 10px; font-size: 20px; }
+        td { border: 1px solid #ddd; height: 50px; width: 20%; font-size: 22px; cursor: pointer; position: relative; transition: background 0.3s; }
+        
+        /* CORES DAS MARCAÇÕES */
+        td.marcado-auto { background-color: #ffeb3b; color: #d32f2f; font-weight: bold; } /* Marcado pelo sistema */
+        td.marcado-manual { border: 3px solid #28a745; } /* Clique do usuário (opcional) */
         td.free { background: #ddd; font-size: 12px; }
 
-        /* Histórico */
-        .grid-historico {
-            display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 20px; max-width: 400px; margin-left: auto; margin-right: auto;
-        }
-        .bolinha-hist { font-size: 12px; padding: 5px; background: #eee; border-radius: 4px; color: #ccc; }
-        .bolinha-hist.saiu { background: #333; color: #fff; font-weight: bold; transform: scale(1.1); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        
-        .aviso { color: red; margin-top: 10px; font-weight: bold; min-height: 20px;}
-        .area-botoes-mesa { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+        .aviso { color: red; font-weight: bold; min-height: 20px; margin-top: 10px;}
+        .grid-historico { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; max-width: 400px; margin: 20px auto; }
+        .bolinha-hist { font-size: 12px; padding: 5px; background: #eee; border-radius: 4px; }
+        .bolinha-hist.saiu { background: #333; color: #fff; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <h1>🎱 Bingo da Família</h1>
+	<h4>V2</h4>
+    <div id="status-conexao">Conectando ao servidor...</div>
 
     <div class="menu">
         <button onclick="mudarTela('jogador')" id="btn-jogador" class="btn-ativo">Minha Cartela</button>
@@ -93,193 +74,244 @@
     <div id="tela-jogador" class="tela ativa">
         <div class="cartela-container">
             <table>
-                <thead>
-                    <tr><th>B</th><th>I</th><th>N</th><th>G</th><th>O</th></tr>
-                </thead>
+                <thead><tr><th>B</th><th>I</th><th>N</th><th>G</th><th>O</th></tr></thead>
                 <tbody id="corpo-cartela"></tbody>
             </table>
         </div>
         <br>
-        <button onclick="gerarCartela()" style="background:#555; color:white; padding:10px 20px; border:none; border-radius:5px; cursor: pointer;">Gerar Nova Cartela</button>
-        <p style="font-size:12px; color:#666;">Toque nos números para marcar!</p>
+        <button onclick="gerarNovaCartela()" style="background:#555; color:white; padding:10px; border-radius:5px;">Gerar Nova Cartela</button>
+        <p style="font-size:12px; color:#666;">Os números serão marcados automaticamente!</p>
     </div>
 
     <div id="tela-mesa" class="tela">
-        <div class="globo" id="ultimo-numero">--</div>
+        <div class="globo" id="globo-numero">--</div>
+        <div class="aviso" id="aviso-mesa"></div>
+        <button class="btn-acao" id="btn-sortear" onclick="iniciarSorteioAnimado()">Sortear Número</button>
+        <br><br>
+        <button onclick="reiniciarPartidaGlobal()" style="background:#d32f2f; color:white; padding:8px 15px; border-radius:5px;">Reiniciar Partida (ZERA TUDO)</button>
         
-        <div class="aviso" id="aviso-fim"></div>
-
-        <button class="btn-acao" id="btn-sortear" onclick="animarSorteio()">Sortear Número</button>
-        
-        <div class="area-botoes-mesa">
-            <button onclick="reiniciarJogo()" style="background:#d32f2f; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer;">Reiniciar Jogo</button>
-            <button onclick="sairMesa()" style="background:#777; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer;">Sair da Mesa</button>
-        </div>
-        
-        <h3 style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px;">Histórico</h3>
+        <h3>Histórico</h3>
         <div class="grid-historico" id="grid-historico"></div>
     </div>
 
 <script>
-    const SENHA_ADM = "1234"; 
+    // ======================================================
+    // ⚠️ SUBSTITUA AQUI COM SEUS DADOS DO FIREBASE ⚠️
+	// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-    // --- LÓGICA DE ANIMAÇÃO E SORTEIO ---
-    function animarSorteio() {
-        let numerosDisponiveis = JSON.parse(localStorage.getItem('bingo_disponiveis')) || [];
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCg_AXjED4mhXL7Gu9dH_LF5iLpoMTc938",
+  authDomain: "bingofamilia-7a112.firebaseapp.com",
+  projectId: "bingofamilia-7a112",
+  storageBucket: "bingofamilia-7a112.firebasestorage.app",
+  messagingSenderId: "319208492590",
+  appId: "1:319208492590:web:2ccc4c7bff6691acc1d9bf",
+  measurementId: "G-0C4KKCQTJV"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+    // ======================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyDxxxxxxxxx...",  // Cole sua apiKey aqui
+        authDomain: "seu-projeto.firebaseapp.com", // Cole seu authDomain aqui
+        databaseURL: "https://seu-projeto-default-rtdb.firebaseio.com", // IMPORTANTE: Cole a URL do Database aqui
+        projectId: "seu-projeto",
+        storageBucket: "seu-projeto.appspot.com",
+        messagingSenderId: "123456...",
+        appId: "1:123456..."
+    };
+    // ======================================================
+
+    // Inicializa Firebase
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const db = firebase.database();
+    
+    const SENHA_ADM = "1234";
+    let numerosSorteados = [];
+
+    // --- ESCUTAR O BANCO DE DADOS (REAL TIME) ---
+    // Isso roda em TODOS os celulares sempre que algo muda no banco
+    db.ref('bingo/estado').on('value', (snapshot) => {
+        const dados = snapshot.val();
+        const statusDiv = document.getElementById('status-conexao');
+        statusDiv.innerText = "🟢 Conectado e Sincronizado";
+        statusDiv.classList.add('online');
+
+        if (dados) {
+            numerosSorteados = dados.sorteados || [];
+            
+            // 1. Atualiza o Globo e Histórico (para todos verem)
+            const ultimo = numerosSorteados.length > 0 ? numerosSorteados[numerosSorteados.length - 1] : '--';
+            document.getElementById('globo-numero').innerText = ultimo;
+            atualizarHistoricoVisual(numerosSorteados);
+
+            // 2. Atualiza automaticamente as cartelas dos jogadores
+            verificarCartelaDoJogador(numerosSorteados);
+        } else {
+            // Jogo resetado
+            numerosSorteados = [];
+            document.getElementById('globo-numero').innerText = '--';
+            atualizarHistoricoVisual([]);
+            verificarCartelaDoJogador([]);
+        }
+    });
+
+    // --- FUNÇÕES DA MESA (ADM) ---
+    function iniciarSorteioAnimado() {
+        const btn = document.getElementById('btn-sortear');
+        const globo = document.getElementById('globo-numero');
         
-        if (numerosDisponiveis.length === 0) {
-            // Se for o primeiro jogo, inicializa
-             if(!localStorage.getItem('bingo_iniciado')) {
-                 iniciarMesa();
-                 // Pega a lista atualizada
-                 numerosDisponiveis = JSON.parse(localStorage.getItem('bingo_disponiveis'));
-             } else {
-                 document.getElementById('aviso-fim').innerText = "Fim do Jogo! Todos os números foram sorteados.";
-                 return;
-             }
+        // Verifica se já acabaram os números
+        if (numerosSorteados.length >= 75) {
+            alert("Bingo encerrado! Todos os números saíram.");
+            return;
         }
 
-        const btn = document.getElementById('btn-sortear');
-        const globo = document.getElementById('ultimo-numero');
-        
-        // 1. Bloqueia o botão para não clicar duas vezes
         btn.disabled = true;
         btn.innerText = "Girando...";
-        
-        // 2. Adiciona classe CSS que faz tremer e mudar de cor
         globo.classList.add('agitando');
 
-        // 3. Efeito de números passando rápido (Slot Machine)
-        let contador = 0;
-        const intervalo = setInterval(() => {
-            // Mostra um número aleatório qualquer só para efeito visual
+        // Animação visual (fake)
+        let interval = setInterval(() => {
             globo.innerText = Math.floor(Math.random() * 75) + 1;
-            contador++;
-        }, 80); // Muda a cada 80 milissegundos
+        }, 80);
 
-        // 4. Para a animação após 3 segundos e mostra o número real
+        // Após 3 segundos, sorteia de verdade e manda pro Google
         setTimeout(() => {
-            clearInterval(intervalo);
+            clearInterval(interval);
             globo.classList.remove('agitando');
-            
-            // CHAMA O SORTEIO REAL
-            sortearNumeroReal();
-            
+            realizarSorteioNoBanco();
             btn.disabled = false;
             btn.innerText = "Sortear Número";
-        }, 3000); // 3000ms = 3 segundos de suspense
+        }, 3000);
     }
 
-    function sortearNumeroReal() {
-        let numerosSorteados = JSON.parse(localStorage.getItem('bingo_sorteados')) || [];
-        let numerosDisponiveis = JSON.parse(localStorage.getItem('bingo_disponiveis')) || [];
+    function realizarSorteioNoBanco() {
+        // Pega todos os números possíveis e remove os que já saíram
+        let disponiveis = [];
+        for(let i=1; i<=75; i++) {
+            if(!numerosSorteados.includes(i)) disponiveis.push(i);
+        }
 
-        if (numerosDisponiveis.length === 0) return;
+        if(disponiveis.length === 0) return;
 
-        let indice = Math.floor(Math.random() * numerosDisponiveis.length);
-        let numero = numerosDisponiveis.splice(indice, 1)[0];
-        numerosSorteados.push(numero);
-
-        localStorage.setItem('bingo_iniciado', 'true');
-        salvarEstado(numerosSorteados, numerosDisponiveis);
-        atualizarInterfaceMesa(numero, numerosSorteados);
+        // Escolhe um
+        let indice = Math.floor(Math.random() * disponiveis.length);
+        let numero = disponiveis[indice];
+        
+        // Adiciona à lista e SALVA NO FIREBASE
+        // O "on('value')" lá em cima vai detectar isso e atualizar todo mundo
+        let novaLista = [...numerosSorteados, numero];
+        db.ref('bingo/estado').set({
+            sorteados: novaLista,
+            data: new Date().toString()
+        });
     }
 
-    // --- FUNÇÕES DE INTERFACE ---
-    function atualizarInterfaceMesa(ultimo, listaSorteados) {
-        if (!listaSorteados) listaSorteados = JSON.parse(localStorage.getItem('bingo_sorteados')) || [];
-        if (!ultimo && listaSorteados.length > 0) ultimo = listaSorteados[listaSorteados.length - 1];
+    function reiniciarPartidaGlobal() {
+        if(prompt("Digite ZERA para apagar o jogo de TODOS os celulares:") === "ZERA") {
+            db.ref('bingo/estado').set(null); // Apaga tudo no banco
+            alert("Jogo reiniciado para todos!");
+        }
+    }
 
-        document.getElementById('ultimo-numero').innerText = ultimo ? ultimo : '--';
+    // --- FUNÇÕES DO JOGADOR ---
+    function verificarCartelaDoJogador(listaSorteados) {
+        // Percorre todas as células da cartela atual
+        document.querySelectorAll('#corpo-cartela td').forEach(td => {
+            let valor = td.innerText;
+            if (valor === "FREE") return;
+            
+            // Se o número da célula estiver na lista de sorteados, PINTA DE AMARELO
+            if (listaSorteados.includes(parseInt(valor))) {
+                td.classList.add('marcado-auto');
+            } else {
+                td.classList.remove('marcado-auto');
+            }
+        });
+    }
 
+    function gerarNovaCartela() {
+        if(document.getElementById('corpo-cartela').innerHTML !== "") {
+            if(!confirm("Gerar nova cartela?")) return;
+        }
+        
+        const corpo = document.getElementById('corpo-cartela');
+        corpo.innerHTML = '';
+        
+        let colB = numsAleatorios(1, 15, 5);
+        let colI = numsAleatorios(16, 30, 5);
+        let colN = numsAleatorios(31, 45, 4);
+        let colG = numsAleatorios(46, 60, 5);
+        let colO = numsAleatorios(61, 75, 5);
+
+        for (let i = 0; i < 5; i++) {
+            let tr = document.createElement('tr');
+            let nVal = (i === 2) ? 'FREE' : (i > 2 ? colN[i-1] : colN[i]);
+            let valores = [colB[i], colI[i], nVal, colG[i], colO[i]];
+            
+            valores.forEach(val => {
+                let td = document.createElement('td');
+                td.innerText = val;
+                if(val === 'FREE') td.classList.add('free');
+                // Permite clicar para marcar visualmente (opcional)
+                td.onclick = () => {
+                    if(val !== 'FREE') td.classList.toggle('marcado-manual');
+                }
+                tr.appendChild(td);
+            });
+            corpo.appendChild(tr);
+        }
+        // Verifica imediatamente se já tem números marcados
+        verificarCartelaDoJogador(numerosSorteados);
+    }
+
+    // --- UTILITÁRIOS ---
+    function numsAleatorios(min, max, qtd) {
+        let arr = [];
+        while(arr.length < qtd){
+            let r = Math.floor(Math.random() * (max - min + 1)) + min;
+            if(arr.indexOf(r) === -1) arr.push(r);
+        }
+        return arr;
+    }
+
+    function atualizarHistoricoVisual(lista) {
         const grid = document.getElementById('grid-historico');
         grid.innerHTML = '';
         for(let i=1; i<=75; i++) {
             let div = document.createElement('div');
-            div.className = 'bolinha-hist ' + (listaSorteados.includes(i) ? 'saiu' : '');
+            div.className = 'bolinha-hist ' + (lista.includes(i) ? 'saiu' : '');
             div.innerText = i;
             grid.appendChild(div);
         }
     }
 
-    // --- OUTRAS FUNÇÕES DE SISTEMA ---
-    function verificarAcessoAdm() {
-        if(document.getElementById('tela-mesa').classList.contains('ativa')) return;
-        let tentativa = prompt("Digite a senha do organizador:");
-        if (tentativa === SENHA_ADM) { mudarTela('mesa'); } 
-        else if (tentativa !== null) { alert("Senha incorreta!"); }
-    }
-
-    function sairMesa() { mudarTela('jogador'); }
-
-    function gerarCartela() {
-        if(!confirm("Gerar nova cartela? Você perderá as marcações atuais.")) return;
-        renderizarCartela();
-    }
-    
-    function renderizarCartela() {
-        const corpo = document.getElementById('corpo-cartela');
-        corpo.innerHTML = '';
-        let colB = pegarNumerosAleatorios(1, 15, 5);
-        let colI = pegarNumerosAleatorios(16, 30, 5);
-        let colN = pegarNumerosAleatorios(31, 45, 4);
-        let colG = pegarNumerosAleatorios(46, 60, 5);
-        let colO = pegarNumerosAleatorios(61, 75, 5);
-        for (let i = 0; i < 5; i++) {
-            let tr = document.createElement('tr');
-            let nVal = (i === 2) ? 'FREE' : (i > 2 ? colN[i-1] : colN[i]);
-            let valores = [colB[i], colI[i], nVal, colG[i], colO[i]];
-            valores.forEach((val) => {
-                let td = document.createElement('td');
-                td.innerText = val;
-                if(val === 'FREE') td.className = 'free';
-                td.onclick = function() { if (this.innerText !== 'FREE') this.classList.toggle('marcado'); };
-                tr.appendChild(td);
-            });
-            corpo.appendChild(tr);
-        }
-    }
-
-    function pegarNumerosAleatorios(min, max, qtd) {
-        let nums = [];
-        while(nums.length < qtd){
-            let r = Math.floor(Math.random() * (max - min + 1)) + min;
-            if(nums.indexOf(r) === -1) nums.push(r);
-        }
-        return nums;
-    }
-
-    function iniciarMesa() {
-        let numsDisp = [];
-        for (let i = 1; i <= 75; i++) numsDisp.push(i);
-        salvarEstado([], numsDisp);
-        atualizarInterfaceMesa(null, []);
-    }
-
-    function reiniciarJogo() {
-        let confirmacao = prompt("Para confirmar o reinício, digite 'ZERA':");
-        if(confirmacao && confirmacao.toUpperCase() === 'ZERA') {
-            iniciarMesa();
-            document.getElementById('aviso-fim').innerText = "";
-            localStorage.removeItem('bingo_iniciado');
-        }
-    }
-
-    function salvarEstado(sorteados, disponiveis) {
-        localStorage.setItem('bingo_sorteados', JSON.stringify(sorteados));
-        localStorage.setItem('bingo_disponiveis', JSON.stringify(disponiveis));
-    }
-
     function mudarTela(tipo) {
         document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
         document.getElementById('tela-' + tipo).classList.add('ativa');
+        
         document.getElementById('btn-jogador').className = tipo === 'jogador' ? 'btn-ativo' : 'btn-inativo';
         document.getElementById('btn-mesa').className = tipo === 'mesa' ? 'btn-ativo' : 'btn-inativo';
     }
 
-    // Inicialização
-    if(document.getElementById('corpo-cartela').innerHTML === "") renderizarCartela();
-    atualizarInterfaceMesa();
+    function verificarAcessoAdm() {
+        if(document.getElementById('tela-mesa').classList.contains('ativa')) return;
+        let senha = prompt("Senha da Mesa:");
+        if(senha === SENHA_ADM) mudarTela('mesa');
+        else if(senha !== null) alert("Senha errada.");
+    }
+
+    // Inicia gerando uma cartela
+    gerarNovaCartela();
 
 </script>
 </body>
