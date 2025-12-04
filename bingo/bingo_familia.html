@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo da Família</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #fafafa; margin: 0; padding: 20px; user-select: none; }
+        h1 { color: #d32f2f; margin-bottom: 10px; }
+        
+        /* Menu de Navegação */
+        .menu { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; }
+        .menu button {
+            padding: 12px 20px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; flex: 1; max-width: 150px;
+        }
+        .btn-ativo { background: #d32f2f; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .btn-inativo { background: #e0e0e0; color: #333; }
+        .btn-inativo:hover { background: #ccc; }
+
+        /* Telas */
+        .tela { display: none; animation: fadeIn 0.3s; }
+        .tela.ativa { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Estilo da Cartela */
+        .cartela-container { max-width: 350px; margin: 0 auto; background: white; padding: 10px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #d32f2f; color: white; padding: 10px; font-size: 20px; }
+        td { border: 1px solid #ddd; height: 50px; width: 20%; font-size: 22px; cursor: pointer; position: relative; }
+        td.marcado { background-color: #ffeb3b; color: #d32f2f; font-weight: bold; }
+        td.free { background: #ddd; font-size: 12px; }
+
+        /* Estilo do Sorteio */
+        .globo {
+            font-size: 80px; font-weight: bold; color: white;
+            background: #d32f2f; width: 150px; height: 150px;
+            line-height: 150px; border-radius: 50%; margin: 20px auto;
+            box-shadow: 0 5px 15px rgba(211, 47, 47, 0.4);
+        }
+        .btn-acao { 
+            background: #28a745; color: white; padding: 15px 30px; 
+            font-size: 20px; border: none; border-radius: 50px; cursor: pointer; width: 80%; max-width: 300px;
+        }
+        .grid-historico {
+            display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 20px; max-width: 400px; margin-left: auto; margin-right: auto;
+        }
+        .bolinha-hist {
+            font-size: 12px; padding: 5px; background: #eee; border-radius: 4px; color: #ccc;
+        }
+        .bolinha-hist.saiu { background: #333; color: #fff; font-weight: bold; transform: scale(1.1); }
+        
+        .aviso { color: red; margin-top: 10px; font-weight: bold; min-height: 20px;}
+        .area-botoes-mesa { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <h1>🎱 Bingo da Família</h1>
+
+    <div class="menu">
+        <button onclick="mudarTela('jogador')" id="btn-jogador" class="btn-ativo">Minha Cartela</button>
+        <button onclick="verificarAcessoAdm()" id="btn-mesa" class="btn-inativo">🔒 Mesa (ADM)</button>
+    </div>
+
+    <div id="tela-jogador" class="tela ativa">
+        <div class="cartela-container">
+            <table>
+                <thead>
+                    <tr><th>B</th><th>I</th><th>N</th><th>G</th><th>O</th></tr>
+                </thead>
+                <tbody id="corpo-cartela"></tbody>
+            </table>
+        </div>
+        <br>
+        <button onclick="gerarCartela()" style="background:#555; color:white; padding:10px 20px; border:none; border-radius:5px; cursor: pointer;">Gerar Nova Cartela</button>
+        <p style="font-size:12px; color:#666;">Toque nos números para marcar!</p>
+    </div>
+
+    <div id="tela-mesa" class="tela">
+        <div class="globo" id="ultimo-numero">--</div>
+        
+        <div class="aviso" id="aviso-fim"></div>
+
+        <button class="btn-acao" onclick="sortearNumero()">Sortear Número</button>
+        
+        <div class="area-botoes-mesa">
+            <button onclick="reiniciarJogo()" style="background:#d32f2f; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer;">Reiniciar Jogo</button>
+            <button onclick="sairMesa()" style="background:#777; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer;">Sair da Mesa</button>
+        </div>
+        
+        <h3 style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px;">Histórico</h3>
+        <div class="grid-historico" id="grid-historico"></div>
+    </div>
+
+<script>
+    // ==========================================
+    // CONFIGURAÇÃO DA SENHA DO ADMINISTRADOR
+    // ==========================================
+    const SENHA_ADM = "1234"; 
+    // ==========================================
+
+    // --- LÓGICA DE ACESSO (NOVO) ---
+    function verificarAcessoAdm() {
+        // Se já estiver na mesa, não faz nada
+        if(document.getElementById('tela-mesa').classList.contains('ativa')) return;
+
+        let tentativa = prompt("Digite a senha do organizador para acessar a mesa:");
+        
+        if (tentativa === SENHA_ADM) {
+            mudarTela('mesa');
+        } else if (tentativa !== null) { // Se não apertou cancelar
+            alert("Senha incorreta! Apenas o organizador pode acessar o sorteio.");
+        }
+    }
+
+    function sairMesa() {
+        mudarTela('jogador');
+    }
+
+    // --- LÓGICA DA CARTELA ---
+    function gerarCartela() {
+        if(!confirm("Gerar nova cartela? Você perderá as marcações atuais.")) return;
+
+        const corpo = document.getElementById('corpo-cartela');
+        corpo.innerHTML = '';
+        
+        let colB = pegarNumerosAleatorios(1, 15, 5);
+        let colI = pegarNumerosAleatorios(16, 30, 5);
+        let colN = pegarNumerosAleatorios(31, 45, 4); // Apenas 4, meio é livre
+        let colG = pegarNumerosAleatorios(46, 60, 5);
+        let colO = pegarNumerosAleatorios(61, 75, 5);
+
+        for (let i = 0; i < 5; i++) {
+            let tr = document.createElement('tr');
+            
+            let nVal = (i === 2) ? 'FREE' : (i > 2 ? colN[i-1] : colN[i]);
+            let valores = [colB[i], colI[i], nVal, colG[i], colO[i]];
+
+            valores.forEach((val) => {
+                let td = document.createElement('td');
+                td.innerText = val;
+                if(val === 'FREE') td.className = 'free';
+                
+                td.onclick = function() {
+                    if (this.innerText !== 'FREE') {
+                        this.classList.toggle('marcado');
+                    }
+                };
+                tr.appendChild(td);
+            });
+            corpo.appendChild(tr);
+        }
+    }
+
+    // Função auxiliar para evitar repetição
+    function pegarNumerosAleatorios(min, max, qtd) {
+        let nums = [];
+        while(nums.length < qtd){
+            let r = Math.floor(Math.random() * (max - min + 1)) + min;
+            if(nums.indexOf(r) === -1) nums.push(r);
+        }
+        return nums;
+    }
+
+    // --- LÓGICA DO SORTEIO (MESA) ---
+    let numerosSorteados = JSON.parse(localStorage.getItem('bingo_sorteados')) || [];
+    let numerosDisponiveis = JSON.parse(localStorage.getItem('bingo_disponiveis')) || [];
+
+    function iniciarMesa() {
+        if (numerosDisponiveis.length === 0 && numerosSorteados.length === 0) {
+            for (let i = 1; i <= 75; i++) numerosDisponiveis.push(i);
+        }
+        atualizarInterfaceMesa();
+    }
+
+    function sortearNumero() {
+        if (numerosDisponiveis.length === 0) {
+            document.getElementById('aviso-fim').innerText = "Fim do Jogo! Todos os números foram sorteados.";
+            return;
+        }
+        
+        let indice = Math.floor(Math.random() * numerosDisponiveis.length);
+        let numero = numerosDisponiveis.splice(indice, 1)[0];
+        numerosSorteados.push(numero);
+
+        salvarEstado();
+        atualizarInterfaceMesa(numero);
+    }
+
+    function atualizarInterfaceMesa(ultimo = null) {
+        if (!ultimo && numerosSorteados.length > 0) {
+            ultimo = numerosSorteados[numerosSorteados.length - 1];
+        }
+        document.getElementById('ultimo-numero').innerText = ultimo ? ultimo : '--';
+
+        const grid = document.getElementById('grid-historico');
+        grid.innerHTML = '';
+        for(let i=1; i<=75; i++) {
+            let div = document.createElement('div');
+            div.className = 'bolinha-hist ' + (numerosSorteados.includes(i) ? 'saiu' : '');
+            div.innerText = i;
+            grid.appendChild(div);
+        }
+    }
+
+    function reiniciarJogo() {
+        let confirmacao = prompt("Para confirmar o reinício, digite 'ZERA' (Isso apaga todo o sorteio):");
+        if(confirmacao && confirmacao.toUpperCase() === 'ZERA') {
+            numerosSorteados = [];
+            numerosDisponiveis = [];
+            for (let i = 1; i <= 75; i++) numerosDisponiveis.push(i);
+            salvarEstado();
+            atualizarInterfaceMesa();
+            document.getElementById('aviso-fim').innerText = "";
+        }
+    }
+
+    function salvarEstado() {
+        localStorage.setItem('bingo_sorteados', JSON.stringify(numerosSorteados));
+        localStorage.setItem('bingo_disponiveis', JSON.stringify(numerosDisponiveis));
+    }
+
+    // --- CONTROLE DE TELAS ---
+    function mudarTela(tipo) {
+        document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
+        document.getElementById('tela-' + tipo).classList.add('ativa');
+        
+        let btnJog = document.getElementById('btn-jogador');
+        let btnMes = document.getElementById('btn-mesa');
+
+        if(tipo === 'jogador') {
+            btnJog.className = 'btn-ativo';
+            btnMes.className = 'btn-inativo';
+        } else {
+            btnJog.className = 'btn-inativo';
+            btnMes.className = 'btn-ativo';
+        }
+    }
+
+    // Inicialização - Carrega a cartela inicial se não tiver
+    if(document.getElementById('corpo-cartela').innerHTML === "") {
+        // Gera cartela inicial sem perguntar na primeira carga
+        const corpo = document.getElementById('corpo-cartela');
+        let colB = pegarNumerosAleatorios(1, 15, 5);
+        let colI = pegarNumerosAleatorios(16, 30, 5);
+        let colN = pegarNumerosAleatorios(31, 45, 4);
+        let colG = pegarNumerosAleatorios(46, 60, 5);
+        let colO = pegarNumerosAleatorios(61, 75, 5);
+        for (let i = 0; i < 5; i++) {
+            let tr = document.createElement('tr');
+            let nVal = (i === 2) ? 'FREE' : (i > 2 ? colN[i-1] : colN[i]);
+            let valores = [colB[i], colI[i], nVal, colG[i], colO[i]];
+            valores.forEach((val) => {
+                let td = document.createElement('td');
+                td.innerText = val;
+                if(val === 'FREE') td.className = 'free';
+                td.onclick = function() { if (this.innerText !== 'FREE') this.classList.toggle('marcado'); };
+                tr.appendChild(td);
+            });
+            corpo.appendChild(tr);
+        }
+    }
+    iniciarMesa();
+
+</script>
+</body>
+</html>

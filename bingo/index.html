@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carregando Bingo...</title>
+    
+    <meta http-equiv="refresh" content="0; url=bingoFamilia.html">
+
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #d32f2f;
+            color: white;
+            margin: 0;
+            text-align: center;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #ffeb3b;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        a { color: #ffeb3b; font-weight: bold; font-size: 18px; }
+    </style>
+</head>
+<body>
+
+    <div class="loader"></div>
+    <h2>Entrando no Bingo...</h2>
+    
+    <p>Se não carregar automaticamente, <br>
+    <a href="bingoFamilia.html">Clique aqui para entrar</a></p>
+
+    <script>
+        window.location.href = "bingoFamilia.html";
+    </script>
+
+</body>
+</html>
