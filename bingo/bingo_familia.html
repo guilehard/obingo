@@ -7,6 +7,8 @@
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <style>
         body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #fafafa; margin: 0; padding: 20px; user-select: none; }
@@ -95,30 +97,39 @@
     </div>
 
 <script>
-    // ======================================================
-    // ⚠️ SUBSTITUA AQUI COM SEUS DADOS DO FIREBASE ⚠️
-	// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+    <script>
+    // --- CÓDIGO CORRIGIDO (SEM IMPORT) ---
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCg_AXjED4mhXL7Gu9dH_LF5iLpoMTc938",
-  authDomain: "bingofamilia-7a112.firebaseapp.com",
-  databaseURL: "https://bingofamilia-7a112-default-rtdb.firebaseio.com", // IMPORTANTE: Cole a URL do Database aqui
-  projectId: "bingofamilia-7a112",
-  storageBucket: "bingofamilia-7a112.firebasestorage.app",
-  messagingSenderId: "319208492590",
-  appId: "1:319208492590:web:2ccc4c7bff6691acc1d9bf",
-  measurementId: "G-0C4KKCQTJV"
-};
+    // 1. Configuração (Note que NÃO tem a palavra "import" antes)
+    const firebaseConfig = {
+        apiKey: "Sua_ApiKey_Gigante_Aqui", 
+        authDomain: "bingofamilia-7a112.firebaseapp.com",
+        
+        // 👇 AQUI ESTÁ A CORREÇÃO DA URL (Sem o :null e sem aspas duplas extras)
+        databaseURL: "https://bingofamilia-7a112-default-rtdb.firebaseio.com",
+        
+        projectId: "bingofamilia-7a112",
+        storageBucket: "bingofamilia-7a112.appspot.com",
+        messagingSenderId: "SEU_NUMERO_ID",
+        appId: "SEU_APP_ID"
+    };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+    // 2. Inicialização (Modo Clássico/Compat)
+    // Se o firebase não estiver definido, avisa o erro
+    if (typeof firebase === 'undefined') {
+        alert("Erro: As bibliotecas do Firebase não carregaram no <head>.");
+    } else {
+        // Inicia o app
+        if (!firebase.apps.length) { 
+            firebase.initializeApp(firebaseConfig); 
+        }
+        // Conecta no banco
+        var db = firebase.database();
+    }
+
+    // --- DAQUI PRA BAIXO MANTENHA O CÓDIGO DO JOGO ---
+    const SENHA_ADM = "1234";
+    // ... resto do código ...
     // ======================================================
     const firebaseConfig = {
         apiKey: "AIzaSyDxxxxxxxxx...",  // Cole sua apiKey aqui
@@ -317,6 +328,7 @@ const analytics = getAnalytics(app);
 </script>
 </body>
 </html>
+
 
 
 
