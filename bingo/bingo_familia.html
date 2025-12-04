@@ -5,15 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bingo Online da Família</title>
     
- 
-	<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <style>
         body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #fafafa; margin: 0; padding: 20px; user-select: none; }
         h1 { color: #d32f2f; margin-bottom: 10px; }
         
-        /* Status de Conexão */
+        /* Status */
         #status-conexao { font-size: 12px; color: #aaa; margin-bottom: 15px; }
         .online { color: green !important; font-weight: bold; }
 
@@ -27,7 +26,7 @@
         .tela.ativa { display: block; animation: fadeIn 0.5s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* GLOBO E ANIMAÇÃO */
+        /* GLOBO */
         .globo {
             font-size: 80px; font-weight: bold; color: white;
             background: #d32f2f; width: 150px; height: 150px;
@@ -36,10 +35,7 @@
             transition: 0.3s;
         }
         .globo.agitando { animation: tremer 0.5s infinite; background: #ff9800; }
-        @keyframes tremer {
-            0% { transform: rotate(0deg); } 25% { transform: rotate(5deg); } 
-            75% { transform: rotate(-5deg); } 100% { transform: rotate(0deg); }
-        }
+        @keyframes tremer { 0% { transform: rotate(0deg); } 25% { transform: rotate(5deg); } 75% { transform: rotate(-5deg); } 100% { transform: rotate(0deg); } }
 
         .btn-acao { background: #28a745; color: white; padding: 15px 30px; font-size: 20px; border: none; border-radius: 50px; cursor: pointer; width: 80%; max-width: 300px; }
         .btn-acao:disabled { background: #ccc; cursor: not-allowed; }
@@ -48,11 +44,9 @@
         .cartela-container { max-width: 350px; margin: 0 auto; background: white; padding: 10px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         table { width: 100%; border-collapse: collapse; }
         th { background: #d32f2f; color: white; padding: 10px; font-size: 20px; }
-        td { border: 1px solid #ddd; height: 50px; width: 20%; font-size: 22px; cursor: pointer; position: relative; transition: background 0.3s; }
-        
-        /* CORES DAS MARCAÇÕES */
-        td.marcado-auto { background-color: #ffeb3b; color: #d32f2f; font-weight: bold; } /* Marcado pelo sistema */
-        td.marcado-manual { border: 3px solid #28a745; } /* Clique do usuário (opcional) */
+        td { border: 1px solid #ddd; height: 50px; width: 20%; font-size: 22px; cursor: pointer; transition: background 0.3s; }
+        td.marcado-auto { background-color: #ffeb3b; color: #d32f2f; font-weight: bold; }
+        td.marcado-manual { border: 3px solid #28a745; }
         td.free { background: #ddd; font-size: 12px; }
 
         .aviso { color: red; font-weight: bold; min-height: 20px; margin-top: 10px;}
@@ -64,7 +58,6 @@
 <body>
 
     <h1>🎱 Bingo da Família</h1>
-	<h4>V2</h4>
     <div id="status-conexao">Conectando ao servidor...</div>
 
     <div class="menu">
@@ -90,245 +83,45 @@
         <button class="btn-acao" id="btn-sortear" onclick="iniciarSorteioAnimado()">Sortear Número</button>
         <br><br>
         <button onclick="reiniciarPartidaGlobal()" style="background:#d32f2f; color:white; padding:8px 15px; border-radius:5px;">Reiniciar Partida (ZERA TUDO)</button>
-        
         <h3>Histórico</h3>
         <div class="grid-historico" id="grid-historico"></div>
     </div>
 
 <script>
-    <script>
-    // --- CÓDIGO CORRIGIDO (SEM IMPORT) ---
-
-    // 1. Configuração (Note que NÃO tem a palavra "import" antes)
+    // ======================================================
+    // ⚠️ PREENCHA AQUI SEUS DADOS (SEM APAGAR AS ASPAS) ⚠️
+    // ======================================================
     const firebaseConfig = {
-        apiKey: "Sua_ApiKey_Gigante_Aqui", 
+        apiKey: "SUA_API_KEY_AQUI", 
         authDomain: "bingofamilia-7a112.firebaseapp.com",
         
-        // 👇 AQUI ESTÁ A CORREÇÃO DA URL (Sem o :null e sem aspas duplas extras)
+        // AQUI ESTÁ A URL CORRIGIDA (SEM O :NULL)
         databaseURL: "https://bingofamilia-7a112-default-rtdb.firebaseio.com",
         
         projectId: "bingofamilia-7a112",
         storageBucket: "bingofamilia-7a112.appspot.com",
-        messagingSenderId: "SEU_NUMERO_ID",
-        appId: "SEU_APP_ID"
-    };
-
-    // 2. Inicialização (Modo Clássico/Compat)
-    // Se o firebase não estiver definido, avisa o erro
-    if (typeof firebase === 'undefined') {
-        alert("Erro: As bibliotecas do Firebase não carregaram no <head>.");
-    } else {
-        // Inicia o app
-        if (!firebase.apps.length) { 
-            firebase.initializeApp(firebaseConfig); 
-        }
-        // Conecta no banco
-        var db = firebase.database();
-    }
-
-    // --- DAQUI PRA BAIXO MANTENHA O CÓDIGO DO JOGO ---
-    const SENHA_ADM = "1234";
-    // ... resto do código ...
-    // ======================================================
-    const firebaseConfig = {
-        apiKey: "AIzaSyDxxxxxxxxx...",  // Cole sua apiKey aqui
-        authDomain: "seu-projeto.firebaseapp.com", // Cole seu authDomain aqui
-        databaseURL: "https://bingofamilia-7a112-default-rtdb.firebaseio.com/:null", // IMPORTANTE: Cole a URL do Database aqui
-        projectId: "seu-projeto",
-        storageBucket: "seu-projeto.appspot.com",
         messagingSenderId: "123456...",
         appId: "1:123456..."
     };
     // ======================================================
 
-    // Inicializa Firebase
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-    const db = firebase.database();
-    
+    // INICIALIZAÇÃO SEGURA DO FIREBASE
+    if (typeof firebase === 'undefined') {
+        alert("ERRO: O Firebase não carregou. Verifique sua internet.");
+    } else {
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        var db = firebase.database();
+    }
+
     const SENHA_ADM = "1234";
     let numerosSorteados = [];
 
     // --- ESCUTAR O BANCO DE DADOS (REAL TIME) ---
-    // Isso roda em TODOS os celulares sempre que algo muda no banco
-    db.ref('bingo/estado').on('value', (snapshot) => {
-        const dados = snapshot.val();
-        const statusDiv = document.getElementById('status-conexao');
-        statusDiv.innerText = "🟢 Conectado e Sincronizado";
-        statusDiv.classList.add('online');
+    if(db) {
+        db.ref('bingo/estado').on('value', (snapshot) => {
+            const statusDiv = document.getElementById('status-conexao');
+            statusDiv.innerText = "🟢 Conectado e Sincronizado";
+            statusDiv.classList.add('online');
 
-        if (dados) {
-            numerosSorteados = dados.sorteados || [];
-            
-            // 1. Atualiza o Globo e Histórico (para todos verem)
-            const ultimo = numerosSorteados.length > 0 ? numerosSorteados[numerosSorteados.length - 1] : '--';
-            document.getElementById('globo-numero').innerText = ultimo;
-            atualizarHistoricoVisual(numerosSorteados);
-
-            // 2. Atualiza automaticamente as cartelas dos jogadores
-            verificarCartelaDoJogador(numerosSorteados);
-        } else {
-            // Jogo resetado
-            numerosSorteados = [];
-            document.getElementById('globo-numero').innerText = '--';
-            atualizarHistoricoVisual([]);
-            verificarCartelaDoJogador([]);
-        }
-    });
-
-    // --- FUNÇÕES DA MESA (ADM) ---
-    function iniciarSorteioAnimado() {
-        const btn = document.getElementById('btn-sortear');
-        const globo = document.getElementById('globo-numero');
-        
-        // Verifica se já acabaram os números
-        if (numerosSorteados.length >= 75) {
-            alert("Bingo encerrado! Todos os números saíram.");
-            return;
-        }
-
-        btn.disabled = true;
-        btn.innerText = "Girando...";
-        globo.classList.add('agitando');
-
-        // Animação visual (fake)
-        let interval = setInterval(() => {
-            globo.innerText = Math.floor(Math.random() * 75) + 1;
-        }, 80);
-
-        // Após 3 segundos, sorteia de verdade e manda pro Google
-        setTimeout(() => {
-            clearInterval(interval);
-            globo.classList.remove('agitando');
-            realizarSorteioNoBanco();
-            btn.disabled = false;
-            btn.innerText = "Sortear Número";
-        }, 3000);
-    }
-
-    function realizarSorteioNoBanco() {
-        // Pega todos os números possíveis e remove os que já saíram
-        let disponiveis = [];
-        for(let i=1; i<=75; i++) {
-            if(!numerosSorteados.includes(i)) disponiveis.push(i);
-        }
-
-        if(disponiveis.length === 0) return;
-
-        // Escolhe um
-        let indice = Math.floor(Math.random() * disponiveis.length);
-        let numero = disponiveis[indice];
-        
-        // Adiciona à lista e SALVA NO FIREBASE
-        // O "on('value')" lá em cima vai detectar isso e atualizar todo mundo
-        let novaLista = [...numerosSorteados, numero];
-        db.ref('bingo/estado').set({
-            sorteados: novaLista,
-            data: new Date().toString()
-        });
-    }
-
-    function reiniciarPartidaGlobal() {
-        if(prompt("Digite ZERA para apagar o jogo de TODOS os celulares:") === "ZERA") {
-            db.ref('bingo/estado').set(null); // Apaga tudo no banco
-            alert("Jogo reiniciado para todos!");
-        }
-    }
-
-    // --- FUNÇÕES DO JOGADOR ---
-    function verificarCartelaDoJogador(listaSorteados) {
-        // Percorre todas as células da cartela atual
-        document.querySelectorAll('#corpo-cartela td').forEach(td => {
-            let valor = td.innerText;
-            if (valor === "FREE") return;
-            
-            // Se o número da célula estiver na lista de sorteados, PINTA DE AMARELO
-            if (listaSorteados.includes(parseInt(valor))) {
-                td.classList.add('marcado-auto');
-            } else {
-                td.classList.remove('marcado-auto');
-            }
-        });
-    }
-
-    function gerarNovaCartela() {
-        if(document.getElementById('corpo-cartela').innerHTML !== "") {
-            if(!confirm("Gerar nova cartela?")) return;
-        }
-        
-        const corpo = document.getElementById('corpo-cartela');
-        corpo.innerHTML = '';
-        
-        let colB = numsAleatorios(1, 15, 5);
-        let colI = numsAleatorios(16, 30, 5);
-        let colN = numsAleatorios(31, 45, 4);
-        let colG = numsAleatorios(46, 60, 5);
-        let colO = numsAleatorios(61, 75, 5);
-
-        for (let i = 0; i < 5; i++) {
-            let tr = document.createElement('tr');
-            let nVal = (i === 2) ? 'FREE' : (i > 2 ? colN[i-1] : colN[i]);
-            let valores = [colB[i], colI[i], nVal, colG[i], colO[i]];
-            
-            valores.forEach(val => {
-                let td = document.createElement('td');
-                td.innerText = val;
-                if(val === 'FREE') td.classList.add('free');
-                // Permite clicar para marcar visualmente (opcional)
-                td.onclick = () => {
-                    if(val !== 'FREE') td.classList.toggle('marcado-manual');
-                }
-                tr.appendChild(td);
-            });
-            corpo.appendChild(tr);
-        }
-        // Verifica imediatamente se já tem números marcados
-        verificarCartelaDoJogador(numerosSorteados);
-    }
-
-    // --- UTILITÁRIOS ---
-    function numsAleatorios(min, max, qtd) {
-        let arr = [];
-        while(arr.length < qtd){
-            let r = Math.floor(Math.random() * (max - min + 1)) + min;
-            if(arr.indexOf(r) === -1) arr.push(r);
-        }
-        return arr;
-    }
-
-    function atualizarHistoricoVisual(lista) {
-        const grid = document.getElementById('grid-historico');
-        grid.innerHTML = '';
-        for(let i=1; i<=75; i++) {
-            let div = document.createElement('div');
-            div.className = 'bolinha-hist ' + (lista.includes(i) ? 'saiu' : '');
-            div.innerText = i;
-            grid.appendChild(div);
-        }
-    }
-
-    function mudarTela(tipo) {
-        document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
-        document.getElementById('tela-' + tipo).classList.add('ativa');
-        
-        document.getElementById('btn-jogador').className = tipo === 'jogador' ? 'btn-ativo' : 'btn-inativo';
-        document.getElementById('btn-mesa').className = tipo === 'mesa' ? 'btn-ativo' : 'btn-inativo';
-    }
-
-    function verificarAcessoAdm() {
-        if(document.getElementById('tela-mesa').classList.contains('ativa')) return;
-        let senha = prompt("Senha da Mesa:");
-        if(senha === SENHA_ADM) mudarTela('mesa');
-        else if(senha !== null) alert("Senha errada.");
-    }
-
-    // Inicia gerando uma cartela
-    gerarNovaCartela();
-
-</script>
-</body>
-</html>
-
-
-
-
-
+            const dados = snapshot.val();
+            if (dados) {
