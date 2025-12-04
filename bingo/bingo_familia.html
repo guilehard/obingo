@@ -38,3 +38,262 @@
             transition: 0.3s;
         }
         .globo.agitando { animation: tremer 0.5s infinite; background: #ff9800; }
+        @keyframes tremer { 0% { transform: rotate(0deg); } 25% { transform: rotate(5deg); } 75% { transform: rotate(-5deg); } 100% { transform: rotate(0deg); } }
+
+        .btn-acao { background: #28a745; color: white; padding: 15px 30px; font-size: 20px; border: none; border-radius: 50px; cursor: pointer; width: 80%; max-width: 300px; box-shadow: 0 4px 0 #1e7e34; }
+        .btn-acao:active { transform: translateY(4px); box-shadow: none; }
+        .btn-acao:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
+
+        /* CARTELA */
+        .cartela-container { max-width: 350px; margin: 0 auto; background: white; padding: 10px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #d32f2f; color: white; padding: 10px; font-size: 20px; border-radius: 5px 5px 0 0; }
+        td { border: 1px solid #ddd; height: 50px; width: 20%; font-size: 22px; cursor: pointer; transition: background 0.3s; position: relative; }
+        
+        /* CORES DE MARCAÇÃO */
+        td.marcado-auto { background-color: #ffeb3b; color: #d32f2f; font-weight: bold; } /* Automático (Sorteado) */
+        td.marcado-manual { border: 3px solid #28a745; } /* Manual (Clique do usuário) */
+        td.free { background: #ddd; font-size: 12px; }
+
+        .aviso { color: red; font-weight: bold; min-height: 20px; margin-top: 10px;}
+        .grid-historico { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; max-width: 400px; margin: 20px auto; }
+        .bolinha-hist { font-size: 12px; padding: 5px; background: #eee; border-radius: 4px; color: #ccc; }
+        .bolinha-hist.saiu { background: #333; color: #fff; font-weight: bold; transform: scale(1.1); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+
+    <h1>🎱 Bingo da Família</h1>
+    <div id="status-conexao" class="offline">Conectando ao servidor...</div>
+
+    <div class="menu">
+        <button onclick="mudarTela('jogador')" id="btn-jogador" class="btn-ativo">Minha Cartela</button>
+        <button onclick="verificarAcessoAdm()" id="btn-mesa" class="btn-inativo">🔒 Mesa (ADM)</button>
+    </div>
+
+    <div id="tela-jogador" class="tela ativa">
+        <div class="cartela-container">
+            <table>
+                <thead><tr><th>B</th><th>I</th><th>N</th><th>G</th><th>O</th></tr></thead>
+                <tbody id="corpo-cartela"></tbody>
+            </table>
+        </div>
+        <br>
+        <button onclick="gerarNovaCartela()" style="background:#555; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer;">Gerar Nova Cartela</button>
+        <p style="font-size:12px; color:#666;">
+            🟡 Amarelo: Sorteado pela mesa (Automático)<br>
+            🟢 Borda Verde: Sua marcação (Clique)
+        </p>
+    </div>
+
+    <div id="tela-mesa" class="tela">
+        <div class="globo" id="globo-numero">--</div>
+        <div class="aviso" id="aviso-mesa"></div>
+        <button class="btn-acao" id="btn-sortear" onclick="iniciarSorteioAnimado()">Sortear Número</button>
+        
+        <div style="margin-top: 30px;">
+            <button onclick="reiniciarPartidaGlobal()" style="background:#d32f2f; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer;">Reiniciar Partida (ZERA TUDO)</button>
+        </div>
+        
+        <h3 style="margin-top:20px; border-top:1px solid #ddd; padding-top:10px;">Histórico</h3>
+        <div class="grid-historico" id="grid-historico"></div>
+    </div>
+
+<script>
+    // ======================================================
+    // ⚠️ COPIE AQUI OS DADOS QUE FUNCIONARAM NO TESTE ⚠️
+    // ======================================================
+    const firebaseConfig = {
+        apiKey: "SUA_API_KEY_AQUI", 
+        authDomain: "bingofamilia-7a112.firebaseapp.com",
+        
+        // 🚨 Certifique-se que esta URL está correta (sem :null)
+        databaseURL: "https://bingofamilia-7a112-default-rtdb.firebaseio.com",
+        
+        projectId: "bingofamilia-7a112",
+        storageBucket: "bingofamilia-7a112.appspot.com",
+        messagingSenderId: "123456...",
+        appId: "1:123456..."
+    };
+    // ======================================================
+
+    // Inicialização do Firebase
+    if (typeof firebase === 'undefined') {
+        alert("Erro: O Firebase não carregou. Verifique sua internet.");
+    } else {
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        var db = firebase.database();
+    }
+
+    const SENHA_ADM = "1234";
+    let numerosSorteados = [];
+
+    // --- SINCRONIZAÇÃO EM TEMPO REAL ---
+    if(db) {
+        // Verifica conexão (.info/connected)
+        db.ref(".info/connected").on("value", function(snap) {
+            const statusDiv = document.getElementById('status-conexao');
+            if (snap.val() === true) {
+                statusDiv.innerText = "🟢 Conectado e Sincronizado";
+                statusDiv.className = "online";
+            } else {
+                statusDiv.innerText = "🔴 Desconectado (Tentando reconectar...)";
+                statusDiv.className = "offline";
+            }
+        });
+
+        // Escuta os sorteios
+        db.ref('bingo/estado').on('value', (snapshot) => {
+            const dados = snapshot.val();
+            if (dados) {
+                numerosSorteados = dados.sorteados || [];
+                const ultimo = numerosSorteados.length > 0 ? numerosSorteados[numerosSorteados.length - 1] : '--';
+                
+                // Atualiza Mesa
+                document.getElementById('globo-numero').innerText = ultimo;
+                atualizarHistoricoVisual(numerosSorteados);
+                
+                // Atualiza Cartelas (Auto-Mark)
+                verificarCartelaDoJogador(numerosSorteados);
+            } else {
+                // Jogo Resetado
+                numerosSorteados = [];
+                document.getElementById('globo-numero').innerText = '--';
+                atualizarHistoricoVisual([]);
+                verificarCartelaDoJogador([]);
+            }
+        });
+    }
+
+    // --- LÓGICA DA MESA (ADM) ---
+    function iniciarSorteioAnimado() {
+        if (numerosSorteados.length >= 75) { alert("Bingo encerrado!"); return; }
+
+        const btn = document.getElementById('btn-sortear');
+        const globo = document.getElementById('globo-numero');
+        
+        btn.disabled = true;
+        btn.innerText = "Girando...";
+        globo.classList.add('agitando');
+
+        // Efeito visual de números passando
+        let interval = setInterval(() => { globo.innerText = Math.floor(Math.random() * 75) + 1; }, 80);
+
+        // Após 3 segundos, envia pro Google
+        setTimeout(() => {
+            clearInterval(interval);
+            globo.classList.remove('agitando');
+            realizarSorteioNoBanco();
+            btn.disabled = false;
+            btn.innerText = "Sortear Número";
+        }, 3000);
+    }
+
+    function realizarSorteioNoBanco() {
+        // Filtra números que ainda não saíram
+        let disponiveis = [];
+        for(let i=1; i<=75; i++) { if(!numerosSorteados.includes(i)) disponiveis.push(i); }
+        
+        if(disponiveis.length === 0) return;
+
+        let indice = Math.floor(Math.random() * disponiveis.length);
+        let numero = disponiveis[indice];
+        
+        // Salva no banco (Isso dispara a atualização em todos os celulares)
+        let novaLista = [...numerosSorteados, numero];
+        db.ref('bingo/estado').set({ sorteados: novaLista, data: new Date().toString() });
+    }
+
+    function reiniciarPartidaGlobal() {
+        if(prompt("Digite ZERA para apagar o jogo de TODOS:") === "ZERA") {
+            db.ref('bingo/estado').set(null);
+        }
+    }
+
+    // --- LÓGICA DO JOGADOR ---
+    function verificarCartelaDoJogador(listaSorteados) {
+        document.querySelectorAll('#corpo-cartela td').forEach(td => {
+            let valor = td.innerText;
+            if (valor === "FREE") return;
+            
+            // Marca de amarelo se foi sorteado
+            if (listaSorteados.includes(parseInt(valor))) { 
+                td.classList.add('marcado-auto'); 
+            } else { 
+                td.classList.remove('marcado-auto'); 
+            }
+        });
+    }
+
+    function gerarNovaCartela() {
+        if(document.getElementById('corpo-cartela').innerHTML !== "") {
+            if(!confirm("Gerar nova cartela?")) return;
+        }
+        const corpo = document.getElementById('corpo-cartela');
+        corpo.innerHTML = '';
+        
+        let colB = numsAleatorios(1, 15, 5);
+        let colI = numsAleatorios(16, 30, 5);
+        let colN = numsAleatorios(31, 45, 4);
+        let colG = numsAleatorios(46, 60, 5);
+        let colO = numsAleatorios(61, 75, 5);
+
+        for (let i = 0; i < 5; i++) {
+            let tr = document.createElement('tr');
+            let nVal = (i === 2) ? 'FREE' : (i > 2 ? colN[i-1] : colN[i]);
+            let valores = [colB[i], colI[i], nVal, colG[i], colO[i]];
+            valores.forEach(val => {
+                let td = document.createElement('td');
+                td.innerText = val;
+                if(val === 'FREE') td.classList.add('free');
+                // Clique manual (borda verde)
+                td.onclick = () => { if(val !== 'FREE') td.classList.toggle('marcado-manual'); }
+                tr.appendChild(td);
+            });
+            corpo.appendChild(tr);
+        }
+        // Verifica se algum número da cartela nova já saiu
+        verificarCartelaDoJogador(numerosSorteados);
+    }
+
+    // --- UTILITÁRIOS ---
+    function numsAleatorios(min, max, qtd) {
+        let arr = [];
+        while(arr.length < qtd){
+            let r = Math.floor(Math.random() * (max - min + 1)) + min;
+            if(arr.indexOf(r) === -1) arr.push(r);
+        }
+        return arr;
+    }
+
+    function atualizarHistoricoVisual(lista) {
+        const grid = document.getElementById('grid-historico');
+        grid.innerHTML = '';
+        for(let i=1; i<=75; i++) {
+            let div = document.createElement('div');
+            div.className = 'bolinha-hist ' + (lista.includes(i) ? 'saiu' : '');
+            div.innerText = i;
+            grid.appendChild(div);
+        }
+    }
+
+    function mudarTela(tipo) {
+        document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
+        document.getElementById('tela-' + tipo).classList.add('ativa');
+        document.getElementById('btn-jogador').className = tipo === 'jogador' ? 'btn-ativo' : 'btn-inativo';
+        document.getElementById('btn-mesa').className = tipo === 'mesa' ? 'btn-ativo' : 'btn-inativo';
+    }
+
+    function verificarAcessoAdm() {
+        if(document.getElementById('tela-mesa').classList.contains('ativa')) return;
+        let senha = prompt("Senha da Mesa:");
+        if(senha === SENHA_ADM) mudarTela('mesa');
+        else if(senha !== null) alert("Senha errada.");
+    }
+
+    // Inicia gerando a primeira cartela
+    gerarNovaCartela();
+
+</script>
+</body>
+</html>
